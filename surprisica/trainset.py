@@ -1,14 +1,17 @@
 
+from __future__ import (absolute_import, print_function, unicode_literals, division)
+
 from surprise import Trainset
 from six import iteritems
 
 
 class Trainset(Trainset):
-    def __init__(self, ur, ir, ic, n_users, n_items, n_ratings, n_contexts, rating_scale,
+    def __init__(self, ur, ir, uc, ic, n_users, n_items, n_ratings, n_contexts, rating_scale,
                  raw2inner_id_users, raw2inner_id_items, raw2inner_id_contexts):
 
         self.ur = ur
         self.ir = ir
+        self.uc = uc
         self.ic = ic
         self.n_users = n_users
         self.n_items = n_items

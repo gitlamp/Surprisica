@@ -1,4 +1,5 @@
 
+from __future__ import (absolute_import, print_function, unicode_literals, division)
 
 from collections import defaultdict
 
@@ -67,7 +68,7 @@ class Dataset(Dataset):
         res = tf.merge(idf)
         res['cnx_weight'] = res['tf'] * res['idf']
         res = res.drop(['tf', 'idf'], axis=1)
-        res = df[[uid, lid]].merge(res)
+        res = df[[uid, lid] + cnx].merge(res)
 
         return res
 
@@ -89,8 +90,7 @@ class Dataset(Dataset):
             uc = defaultdict(list)
             ic = defaultdict(list)
 
-            for ruid, riid, r, rcid, cw in raw_trainset:
-
+            for ruid, riid, r, all_c, all_cw in raw_trainset:
                 try:
                     uid = raw2inner_id_users[ruid]
                 except KeyError:
@@ -103,17 +103,27 @@ class Dataset(Dataset):
                     iid = current_i_index
                     raw2inner_id_items[riid] = current_i_index
                     current_i_index += 1
-                try:
-                    cid = raw2inner_id_contexts[rcid]
-                except KeyError:
-                    cid = current_c_index
-                    raw2inner_id_contexts[rcid] = current_c_index
-                    current_c_index += 1
 
                 ur[uid].append((iid, r))
                 ir[iid].append((uid, r))
-                uc[uid].append((iid, cid))
-                ic[iid].append((uid, cid))
+
+                for i in range(len(all_c)):
+                    rcid = all_c[i]
+                    cw = all_cw[i]
+                    try:
+                        cid = raw2inner_id_contexts[rcid]
+                    except KeyError:
+                        cid = current_c_index
+                        raw2inner_id_contexts[rcid] = current_c_index
+                        current_c_index += 1
+
+                    if (iid, cid) not in uc[uid]:
+                        uc[uid].append((iid, cid))
+                    if (cid, cw) not in ic[iid]:
+                        ic[iid].append((cid, cw))
+
+                    uc[uid].sort()
+                    ic[iid].sort()
 
             n_users = len(ur)
             n_items = len(ir)
@@ -122,6 +132,7 @@ class Dataset(Dataset):
 
             trainset = Trainset(ur,
                                 ir,
+                                uc,
                                 ic,
                                 n_users,
                                 n_items,
@@ -143,17 +154,20 @@ class DatasetAutoFolds(Dataset):
             self.df = df
             if reader.context:
                 self.raw_ratings = []
+                cols = self.df.columns.to_list()
 
-                for i in self.df.itertuples(index=False):
+                for i, group in self.df.groupby(cols[:3]):
                     uid = i[0]
                     iid = i[1]
                     r = i[2]
-                    c = ()
-                    cw = i[-1]
-                    for x in range(1, len(reader.cnx_entities)+1):
-                        c = c + (i[2 + x],)
+                    all_c = []
+                    all_cw = []
+                    for t in group.itertuples(index=False, name=None):
+                        cnum = len(reader.cnx_entities)
+                        all_c.append((t[3:3+cnum]))
+                        all_cw.append(float(t[-1]))
 
-                    self.raw_ratings.append((uid, iid, float(r), c, float(cw)))
+                    self.raw_ratings.append((uid, iid, float(r), all_c, all_cw))
 
             else:
                 self.raw_ratings = [(uid, iid, float(r), None, None)
