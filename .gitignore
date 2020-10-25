@@ -1,0 +1,9 @@
+.ipynb_checkpoints/
+.cache/
+
+build
+.eggs
+.idea/*
+surprisica/utils.c
+*.so
+.DS_Store
