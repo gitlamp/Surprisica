@@ -1,9 +1,10 @@
 .ipynb_checkpoints/
+**/__pycache__/
 .cache/
 
 build
 .eggs
-.idea/*
 surprisica/utils.c
 *.so
+.idea/*
 .DS_Store
