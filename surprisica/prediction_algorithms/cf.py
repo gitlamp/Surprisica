@@ -11,6 +11,7 @@ from .predictions import PredictionImpossible
 
 
 class CF(AlgoBase):
+
     def __init__(self, k=5, min_k=1, context_aware=False, **kwargs):
         super(CF, self).__init__(context_aware=context_aware, **kwargs)
         self.k = k
@@ -21,6 +22,7 @@ class CF(AlgoBase):
 
     def fit(self, trainset):
         super(CF, self).fit(trainset)
+        self.sim = self.compute_similarities()
         self.yr = self.trainset.ir
 
         if self.context_aware:

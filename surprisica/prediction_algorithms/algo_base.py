@@ -8,13 +8,12 @@ from .predictions import PredictionImpossible
 
 
 class AlgoBase:
-    def __init__(self, verbose=False, **kwargs):
-        self.verbose = verbose
+
+    def __init__(self, **kwargs):
         self.sim_options = kwargs.get('sim_options', {})
 
     def fit(self, trainset):
         self.trainset = trainset
-        self.sim = self.compute_similarities()
 
         return self
 
@@ -32,14 +31,16 @@ class AlgoBase:
                         r_ui = r
         except ValueError:
             iiid = 'UKN__' + str(iid)
-        try:
-            icid = self.trainset.to_inner_cid(cid)
-        except ValueError:
-            icid = 'UKN__' + str(cid)
+
+        if cid:
+            try:
+                icid = self.trainset.to_inner_cid(cid)
+            except ValueError:
+                icid = 'UKN__' + str(cid)
 
         details = {}
         try:
-            est = self.estimate(iuid, iiid, icid)
+            est = self.estimate(iuid, iiid, icid) if cid else self.estimate(iuid, iiid)
 
             # If the details dict was also returned
             if isinstance(est, tuple):
@@ -70,7 +71,9 @@ class AlgoBase:
 
     def compute_similarities(self):
         construct_func = {'cosine': simfunc.cosine,
-                          'asymmetric': simfunc.asymmetric_cosine,
+                          'msd': simfunc.msd,
+                          'asymmetric_cosine': simfunc.asymmetric_cosine,
+                          'asymmetric_msd': simfunc.asymmetric_msd,
                           'user_influence': simfunc.usr_influence_cos}
         name = self.sim_options.get('name', 'cosine').lower()
 
@@ -78,7 +81,7 @@ class AlgoBase:
         min_support = self.sim_options.get('min_support', 1)
         args = [n_x, yr, min_support]
 
-        if name == 'asymmetric':
+        if name == 'asymmetric_cosine' or name == 'asymmetric_msd':
             args.insert(2, xr)
         if name == 'user_influence':
             args.insert(2, n_y)

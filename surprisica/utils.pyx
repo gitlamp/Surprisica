@@ -50,6 +50,42 @@ def cosine(n_x, yr, min_support):
     return sim
 
 
+def msd(n_x, yr, min_support):
+    # sum (r_xy - r_x'y)**2 for common ys
+    cdef np.ndarray[np.double_t, ndim=2] sq_diff
+    # number of common ys
+    cdef np.ndarray[np.int_t, ndim=2] freq
+    # the similarity matrix
+    cdef np.ndarray[np.double_t, ndim=2] sim
+
+    cdef int xi, xj
+    cdef double ri, rj
+    cdef int min_sprt = min_support
+
+    sq_diff = np.zeros((n_x, n_x), np.double)
+    freq = np.zeros((n_x, n_x), np.int)
+    sim = np.zeros((n_x, n_x), np.double)
+
+    for y, y_ratings in iteritems(yr):
+        for xi, ri in y_ratings:
+            for xj, rj in y_ratings:
+                sq_diff[xi, xj] += (ri - rj)**2
+                freq[xi, xj] += 1
+
+    for xi in range(n_x):
+        sim[xi, xi] = 1  # completely arbitrary and useless anyway
+        for xj in range(xi + 1, n_x):
+            if freq[xi, xj] < min_sprt:
+                sim[xi, xj] = 0
+            else:
+                # return inverse of (msd + 1) (+ 1 to avoid dividing by zero)
+                sim[xi, xj] = 1 / (sq_diff[xi, xj] / freq[xi, xj] + 1)
+
+            sim[xj, xi] = sim[xi, xj]
+
+    return sim
+
+
 def asymmetric_cosine(n_x, yr, xr, min_support):
     # sum (r_xy * r_x'y) for common ys
     cdef np.ndarray[np.double_t, ndim=2] prods
@@ -92,6 +128,44 @@ def asymmetric_cosine(n_x, yr, xr, min_support):
                 asym_coeff = freq[xi, xj] / len(xr[xi])
                 sorensen_dice_coeff = (2 * freq[xi, xj]) / (len(xr[xi]) + len(xr[xj]))
                 sim[xi, xj] = cos * asym_coeff * sorensen_dice_coeff
+
+    return sim
+
+
+def asymmetric_msd(n_x, yr, xr, min_support, L=16):
+    # sum (r_xy - r_x'y)**2 for common ys
+    cdef np.ndarray[np.double_t, ndim=2] sq_diff
+    # number of common ys
+    cdef np.ndarray[np.int_t, ndim=2] freq
+    # the similarity matrix
+    cdef np.ndarray[np.double_t, ndim=2] sim
+
+    cdef int xi, xj
+    cdef double ri, rj
+    cdef int min_sprt = min_support
+
+    sq_diff = np.zeros((n_x, n_x), np.double)
+    freq = np.zeros((n_x, n_x), np.int)
+    sim = np.zeros((n_x, n_x), np.double)
+
+    for y, y_ratings in iteritems(yr):
+        for xi, ri in y_ratings:
+            for xj, rj in y_ratings:
+                sq_diff[xi, xj] += (ri - rj)**2
+                freq[xi, xj] += 1
+
+    for xi in range(n_x):
+        sim[xi, xi] = 1  # completely arbitrary and useless anyway
+        for xj in range(n_x):
+            if freq[xi, xj] < min_sprt:
+                sim[xi, xj] = 0
+            else:
+                # return inverse of (msd + 1) (+ 1 to avoid dividing by zero)
+                msd = 1 / (sq_diff[xi, xj] / freq[xi, xj] + 1)
+                msd = (L - msd) / L
+                asym_coeff = freq[xi, xj] / len(xr[xi])
+                sorensen_dice_coeff = (2 * freq[xi, xj]) / (len(xr[xi]) + len(xr[xj]))
+                sim[xi, xj] = msd * asym_coeff * sorensen_dice_coeff
 
     return sim
 
