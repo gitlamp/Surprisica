@@ -20,7 +20,7 @@ class Prediction(namedtuple('Prediction',
         else:
             s += 'r_ui = None   '
         if self.cid is not None:
-            s += 'r_ui = {cid}   '.format(cid=self.cid)
+            s += 'c_ui = {cid}   '.format(cid=self.cid)
         else:
             s += 'cid = None   '
         s += 'est = {est:1.2f}   '.format(est=self.est)
