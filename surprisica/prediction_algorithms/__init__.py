@@ -1,5 +1,6 @@
 
 from .algo_base import AlgoBase
-from .cf import CF
+from .KNN import KNNBasic
+from .KNN import KNNWithMeans
 
-__all__ = ['AlgoBase', 'CF']
+__all__ = ['AlgoBase', 'KNNBasic', 'KNNWithMeans']
