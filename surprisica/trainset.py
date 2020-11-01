@@ -24,7 +24,7 @@ class Trainset(Trainset):
         try:
             return self._raw2inner_id_contexts[rcid]
         except KeyError:
-            raise ValueError(f'Context {rcid} is not part of the trainset.')
+            raise ValueError('Context {0} is not part of the trainset.'.format(rcid))
 
     def to_raw_cid(self, icid):
         if self._inner2raw_id_contexts is None:
@@ -34,7 +34,11 @@ class Trainset(Trainset):
         try:
             return self._inner2raw_id_contexts[icid]
         except KeyError:
-            raise ValueError(f'{icid} is not a valid inner id.')
+            raise ValueError('{0} is not a valid inner id.'.format(icid))
             
     def all_contexts(self):
         return range(self.n_contexts)
+    
+    def build_testset(self):
+        return [(self.to_raw_uid(u), self.to_raw_iid(i), r, self.to_raw_cid(c))
+                for (u, i, r, c) in self.all_ratings()]

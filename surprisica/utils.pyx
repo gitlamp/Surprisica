@@ -3,6 +3,7 @@ from __future__ import (absolute_import, print_function, unicode_literals, divis
 
 cimport numpy as np
 import numpy as np
+import numbers
 from six import iteritems
 
 
@@ -226,3 +227,31 @@ def usr_influence_cos(n_x, yr, n_y, xr, min_support):
                 sim[xi, xj] = cos * asym_coeff * sorensen_dice_coeff * usrinf_coeff
 
     return sim
+
+
+def get_rng(random_state):
+    """Return a 'validated' RNG.
+
+    If random_state is None, use RandomState singleton from numpy.  Else if
+    it's an integer, consider it's a seed and initialized an rng with that
+    seed. If it's already an rng, return it.
+    """
+    if random_state is None:
+        return np.random.mtrand._rand
+    elif isinstance(random_state, (numbers.Integral, np.integer)):
+        return np.random.RandomState(random_state)
+    if isinstance(random_state, np.random.RandomState):
+        return random_state
+    raise ValueError('Wrong random state. Expecting None, an int or a numpy '
+                     'RandomState instance, got a '
+                     '{}'.format(type(random_state)))
+
+
+def flatten(container):
+    """ Flatten unstructured list """
+    for i in container:
+        if isinstance(i, list):
+            for j in flatten(i):
+                yield j
+        else:
+            yield i

@@ -1,9 +1,9 @@
 
 from __future__ import (absolute_import, print_function, unicode_literals, division)
 
-from collections import defaultdict
-
+import os
 import numpy as np
+from collections import defaultdict
 from sklearn.preprocessing import minmax_scale
 from surprise.dataset import Dataset
 
@@ -56,7 +56,7 @@ class Dataset(Dataset):
         # Check context exists
         for c in reader.cnx_entities:
             if df[c].dtype != int:
-                raise ValueError(f'Column "{c}" should have integer type.')
+                raise ValueError('Column "{0}" should have integer type.'.format(c))
 
         cnx_loc = df.groupby([lid] + cnx)[lid].count()
         all_loc = df.groupby(cnx)[lid].count()
@@ -143,6 +143,26 @@ class Dataset(Dataset):
                                 raw2inner_id_items,
                                 raw2inner_id_contexts)
             return trainset
+
+    def construct_testset(self, raw_testset):
+        if not self.context:
+            return super(Dataset, self).construct_testset(raw_testset)
+        else:
+            return [(ruid, riid, r_ui_trans, rcid)
+                    for (ruid, riid, r_ui_trans, rcid, _) in raw_testset]
+
+
+class DatasetUserFolds(Dataset):
+    def __init__(self, folds_files=None, reader=None):
+
+        Dataset.__init__(self, reader)
+        self.folds_files = folds_files
+
+        # check that all files actually exist.
+        for train_test_files in self.folds_files:
+            for f in train_test_files:
+                if not os.path.isfile(os.path.expanduser(f)):
+                    raise ValueError('File ' + str(f) + ' does not exist.')
 
 
 class DatasetAutoFolds(Dataset):
