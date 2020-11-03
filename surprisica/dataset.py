@@ -49,10 +49,10 @@ class Dataset(Dataset):
     def create_context_profile(df, reader):
         col = df.columns.to_list()
         col.remove(col[2])
-        uid = col[0]
         lid = col[1]
         cnx = col[2:]
         df = df.filter(col)
+        df = df.drop_duplicates()
         # Check context exists
         for c in reader.cnx_entities:
             if df[c].dtype != int:
@@ -68,7 +68,7 @@ class Dataset(Dataset):
         res = tf.merge(idf)
         res['cnx_weight'] = res['tf'] * res['idf']
         res = res.drop(['tf', 'idf'], axis=1)
-        res = df[[uid, lid] + cnx].merge(res)
+        res = df.merge(res)
 
         return res
 
