@@ -3,6 +3,7 @@ from __future__ import (absolute_import, print_function, unicode_literals, divis
 
 import os
 import numpy as np
+import pandas as pd
 from collections import defaultdict
 from sklearn.preprocessing import minmax_scale
 from surprise.dataset import Dataset
@@ -18,16 +19,22 @@ class Dataset(Dataset):
 
     @classmethod
     def load_from_df(cls, df, reader):
-        rating = cls.create_profile(df=df, reader=reader)
+        ratings = cls.create_profile(df=df, reader=reader)
 
-        return DatasetAutoFolds(df=rating, reader=reader)
+        return DatasetAutoFolds(df=ratings, reader=reader)
+
+    @classmethod
+    def load_from_file(cls, path, reader):
+        ratings = cls.read_ratings(cls, file_name=path, reader=reader)
+
+        return DatasetAutoFolds(df=ratings, reader=reader)
 
     @classmethod
     def create_profile(cls, df, reader):
         if reader.context:
-            rating = cls.create_rating_profile(df, reader)
-            context = cls.create_context_profile(df, reader)
-            profile = rating.merge(context)
+            ratings = cls.create_rating_profile(df, reader)
+            contexts = cls.create_context_profile(df, reader)
+            profile = ratings.merge(contexts)
 
         else:
             profile = cls.create_rating_profile(df, reader)
@@ -144,6 +151,20 @@ class Dataset(Dataset):
                                 raw2inner_id_contexts)
             return trainset
 
+    def read_ratings(self, file_name, reader):
+        ratings = []
+        try:
+            raw_ratings = pd.read_csv(file_name,
+                                      sep=reader.sep,
+                                      encoding='utf-8',
+                                      usecols=reader.entities)
+            raw_ratings = raw_ratings[reader.entities]
+            ratings = self.create_profile(raw_ratings, reader)
+        except Exception as err:
+            print(err)
+
+        return ratings
+
     def construct_testset(self, raw_testset):
         if not self.context:
             return super(Dataset, self).construct_testset(raw_testset)
@@ -166,35 +187,35 @@ class DatasetUserFolds(Dataset):
 
 
 class DatasetAutoFolds(Dataset):
-
     def __init__(self, df=None, reader=None):
-        Dataset.__init__(self, reader)
+        super(DatasetAutoFolds, self).__init__(reader=reader)
 
         if df is not None:
             self.df = df
-            if reader.context:
-                self.raw_ratings = []
-                cols = self.df.columns.to_list()
-
-                for i, group in self.df.groupby(cols[:3]):
-                    uid = i[0]
-                    iid = i[1]
-                    r = i[2]
-                    all_c = []
-                    all_cw = []
-                    for t in group.itertuples(index=False, name=None):
-                        cnum = len(reader.cnx_entities)
-                        all_c.append((t[3:3+cnum]))
-                        all_cw.append(float(t[-1]))
-
-                    self.raw_ratings.append((uid, iid, float(r), all_c, all_cw))
-
-            else:
-                self.raw_ratings = [(uid, iid, float(r), None, None)
-                                    for (uid, iid, r) in
-                                    self.df.itertuples(index=False)]
         else:
             raise ValueError('Must specify rating dataframe.')
+
+        if reader.context:
+            self.raw_ratings = []
+            cols = self.df.columns.to_list()
+
+            for i, group in self.df.groupby(cols[:3]):
+                uid = i[0]
+                iid = i[1]
+                r = i[2]
+                all_c = []
+                all_cw = []
+                for t in group.itertuples(index=False, name=None):
+                    cnum = len(reader.cnx_entities)
+                    all_c.append((t[3:3+cnum]))
+                    all_cw.append(float(t[-1]))
+
+                self.raw_ratings.append((uid, iid, float(r), all_c, all_cw))
+
+        else:
+            self.raw_ratings = [(uid, iid, float(r), None, None)
+                                for (uid, iid, r) in
+                                self.df.itertuples(index=False)]
 
     def build_full_trainset(self):
         return self.construct_trainset(self.raw_ratings)
