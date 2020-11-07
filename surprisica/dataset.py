@@ -213,7 +213,7 @@ class DatasetAutoFolds(Dataset):
                 self.raw_ratings.append((uid, iid, float(r), all_c, all_cw))
 
         else:
-            self.raw_ratings = [(uid, iid, float(r), None, None)
+            self.raw_ratings = [(uid, iid, float(r), None)
                                 for (uid, iid, r) in
                                 self.df.itertuples(index=False)]
 

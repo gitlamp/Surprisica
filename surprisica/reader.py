@@ -6,9 +6,10 @@ import numpy as np
 
 class Reader:
 
-    def __init__(self, rating_scale=(1, 5), line_format='user location timestamp', sep=None):
+    def __init__(self, rating_scale=(1, 5), line_format='user location timestamp', sep=','):
         self.sep = sep
         self.rating_scale = rating_scale
+        self.context = False
         splitted_format = line_format.lower().split()
         self.entities = ['user', 'location', 'timestamp']
         self.cnx_entities = np.setdiff1d(splitted_format, self.entities, assume_unique=True).tolist()

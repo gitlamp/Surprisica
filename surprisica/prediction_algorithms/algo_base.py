@@ -36,8 +36,14 @@ class AlgoBase:
         return self.trainset.global_mean
 
     def test(self, testset, verbose=False):
-        predictions = [self.predict(uid, iid, cid, r_ui_trans, verbose=verbose)
-                       for (uid, iid, r_ui_trans, cid) in testset]
+        predictions = []
+        for pairs in testset:
+            if len(pairs) > 3:
+                uid, iid, r_ui_trans, cid = pairs
+                predictions.append(self.predict(uid, iid, cid, r_ui_trans, verbose=verbose))
+            else:
+                uid, iid, r_ui_trans = pairs
+                predictions.append(self.predict(uid, iid, None, r_ui_trans, verbose=verbose))
 
         return predictions
 
@@ -94,14 +100,14 @@ class AlgoBase:
         except ValueError:
             iiid = 'UKN__' + str(iid)
 
-        # Check context if single-element list
-        if isinstance(cid, list):
-            cid = cid[0]
-        try:
-
-            icid = self.trainset.to_inner_cid(cid)
-        except ValueError:
-            icid = 'UKN__' + str(cid)
+        if cid:
+            # Check context if single-element list
+            if isinstance(cid, list):
+                cid = cid[0]
+            try:
+                icid = self.trainset.to_inner_cid(cid)
+            except ValueError:
+                icid = 'UKN__' + str(cid)
 
         details = {}
         try:
@@ -159,7 +165,6 @@ class AlgoBase:
                 all_details.append(details)
 
             except PredictionImpossible as e:
-                details = {}
                 all_est.append(self.default_prediction())
                 all_details.append({'was_impossible': True,
                                     'reason': str(e)})
