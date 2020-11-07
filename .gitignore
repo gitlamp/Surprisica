@@ -1,10 +1,17 @@
-.ipynb_checkpoints/
-**/__pycache__/
+# Python
+__pycache__/
 .cache/
 
-build
-.eggs
+# Environments
+.env
+.idea
+.DS_Store
+
+# Distribution / Packaging
+build/
+.eggs/
+*.egg-info/
+
+# C extensions
 surprisica/utils.c
 *.so
-.idea/*
-.DS_Store
