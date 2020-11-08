@@ -38,7 +38,7 @@ ext = '.pyx' if USE_CYTHON else '.c'
 
 extentions = [
     Extension(
-        'surprisica/utils',
+        'surprisica.utils',
         ['surprisica/utils' + ext],
         include_dirs=[np.get_include()]
     )]
@@ -52,14 +52,17 @@ else:
 setup(
     name='surprisica',
     author='Amirali',
-    description='',
+    author_email='53194931+gitlamp@users.noreply.github.com',
+    url='https://github.com/gitlamp/Surprisica',
+    description='Surprisica is a package based on scikit-surprise for building and analyzing context-aware recommender systems.',
     long_description=long_description,
     version=__version__,
     classifiers=[
         'Intended Audience :: Developers',
         'Intended Audience :: Education',
         'Intended Audience :: Science/Research',
-        'Programming Language :: Python :: 3'
+        'Programming Language :: Python :: 3',
+        'Programming Language :: Python :: 2.7',
     ],
     keywords='recommender, recommender system, context_aware recommender',
     include_package_data=True,
@@ -67,6 +70,6 @@ setup(
     cmdclass=cmdclass,
     install_requires=install_requires,
     dependency_links=dependency_links,
-    entry_points={'console_script':
+    entry_points={'console_scripts':
                   ['surprisica = surprisica.__main__:main']}
 )
