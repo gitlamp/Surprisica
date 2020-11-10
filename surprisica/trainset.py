@@ -6,13 +6,14 @@ from six import iteritems
 
 
 class Trainset(Trainset):
-    def __init__(self, ur, ir, uc, ic, n_users, n_items, n_ratings, n_contexts, rating_scale,
+    def __init__(self, ur, ir, uc, ic, iv, n_users, n_items, n_ratings, n_contexts, rating_scale,
                  raw2inner_id_users, raw2inner_id_items, raw2inner_id_contexts):
 
         super(Trainset, self).__init__(ur, ir, n_users, n_items, n_ratings, rating_scale,
                                        raw2inner_id_users, raw2inner_id_items)
         self.uc = uc
         self.ic = ic
+        self.iv = iv
         self.n_contexts = n_contexts
         self._raw2inner_id_contexts = raw2inner_id_contexts
         self._inner2raw_id_contexts = None

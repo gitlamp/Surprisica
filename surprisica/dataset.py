@@ -47,8 +47,9 @@ class Dataset(Dataset):
         uid = col[0]
         iid = col[1]
         t = col[2]
-        r = df.groupby([uid, iid])[t].count().reset_index(name='rating')
-        r[['rating']] = minmax_scale(r[['rating']], feature_range=reader.rating_scale)
+        r = df.groupby([uid, iid])[t].count().reset_index(name='visit')
+        r[['rating']] = minmax_scale(r[['visit']], feature_range=reader.rating_scale)
+        r = r[[uid, iid, 'rating', 'visit']]
 
         return r
 
@@ -80,43 +81,48 @@ class Dataset(Dataset):
         return res
 
     def construct_trainset(self, raw_trainset):
-        if not self.context:
-            return super(Dataset, self).construct_trainset(raw_trainset)
+        raw2inner_id_users = {}
+        raw2inner_id_items = {}
+        raw2inner_id_contexts = {} if self.context else None
 
-        else:
-            raw2inner_id_users = {}
-            raw2inner_id_items = {}
-            raw2inner_id_contexts = {}
+        current_u_index = 0
+        current_i_index = 0
+        current_c_index = 0
 
-            current_u_index = 0
-            current_i_index = 0
-            current_c_index = 0
+        ur = defaultdict(list)
+        ir = defaultdict(list)
+        iv = defaultdict(list)
+        uc = defaultdict(list) if self.context else None
+        ic = defaultdict(list) if self.context else None
 
-            ur = defaultdict(list)
-            ir = defaultdict(list)
-            uc = defaultdict(list)
-            ic = defaultdict(list)
+        for item in raw_trainset:
 
-            for ruid, riid, r, all_c, all_cw in raw_trainset:
-                try:
-                    uid = raw2inner_id_users[ruid]
-                except KeyError:
-                    uid = current_u_index
-                    raw2inner_id_users[ruid] = current_u_index
-                    current_u_index += 1
-                try:
-                    iid = raw2inner_id_items[riid]
-                except KeyError:
-                    iid = current_i_index
-                    raw2inner_id_items[riid] = current_i_index
-                    current_i_index += 1
+            if self.context:
+                ruid, riid, r, all_c, dets = item
+            else:
+                ruid, riid, r, dets = item
 
-                ur[uid].append((iid, r))
-                ir[iid].append((uid, r))
+            try:
+                uid = raw2inner_id_users[ruid]
+            except KeyError:
+                uid = current_u_index
+                raw2inner_id_users[ruid] = current_u_index
+                current_u_index += 1
+            try:
+                iid = raw2inner_id_items[riid]
+            except KeyError:
+                iid = current_i_index
+                raw2inner_id_items[riid] = current_i_index
+                current_i_index += 1
 
+            ur[uid].append((iid, r))
+            ir[iid].append((uid, r))
+            iv[iid].append((uid, dets['visit']))
+
+            if self.context:
                 for i in range(len(all_c)):
                     rcid = all_c[i]
-                    cw = all_cw[i]
+                    cw = dets['cw'][i]
                     try:
                         cid = raw2inner_id_contexts[rcid]
                     except KeyError:
@@ -132,24 +138,27 @@ class Dataset(Dataset):
                     uc[uid].sort()
                     ic[iid].sort()
 
-            n_users = len(ur)
-            n_items = len(ir)
-            n_ratings = len(raw_trainset)
-            n_contexts = len(raw2inner_id_contexts)
+                n_contexts = len(raw2inner_id_contexts)
 
-            trainset = Trainset(ur,
-                                ir,
-                                uc,
-                                ic,
-                                n_users,
-                                n_items,
-                                n_ratings,
-                                n_contexts,
-                                self.reader.rating_scale,
-                                raw2inner_id_users,
-                                raw2inner_id_items,
-                                raw2inner_id_contexts)
-            return trainset
+        n_users = len(ur)
+        n_items = len(ir)
+        n_ratings = len(raw_trainset)
+        n_contexts = len(raw2inner_id_contexts) if self.context else None
+
+        trainset = Trainset(ur,
+                            ir,
+                            uc,
+                            ic,
+                            iv,
+                            n_users,
+                            n_items,
+                            n_ratings,
+                            n_contexts,
+                            self.reader.rating_scale,
+                            raw2inner_id_users,
+                            raw2inner_id_items,
+                            raw2inner_id_contexts)
+        return trainset
 
     def read_ratings(self, file_name, reader):
         ratings = []
@@ -195,27 +204,32 @@ class DatasetAutoFolds(Dataset):
         else:
             raise ValueError('Must specify rating dataframe.')
 
+        self.raw_ratings = []
         if reader.context:
-            self.raw_ratings = []
             cols = self.df.columns.to_list()
 
             for i, group in self.df.groupby(cols[:3]):
                 uid = i[0]
                 iid = i[1]
                 r = i[2]
+                v = group.visit.values[0]
                 all_c = []
                 all_cw = []
+                # All not necessary details about records
+                dets = {}
                 for t in group.itertuples(index=False, name=None):
                     cnum = len(reader.cnx_entities)
                     all_c.append((t[3:3+cnum]))
                     all_cw.append(float(t[-1]))
-
-                self.raw_ratings.append((uid, iid, float(r), all_c, all_cw))
+                # Input context weights and inverse item frequency of visits
+                dets['cw'], dets['visit'] = all_cw, v
+                self.raw_ratings.append((uid, iid, float(r), all_c, dets))
 
         else:
-            self.raw_ratings = [(uid, iid, float(r), None)
-                                for (uid, iid, r) in
-                                self.df.itertuples(index=False)]
+            for uid, iid, r, v in self.df.itertuples(index=False):
+                dets = {}
+                dets['visit'] = v
+                self.raw_ratings.append((uid, iid, float(r), dets))
 
     def build_full_trainset(self):
         return self.construct_trainset(self.raw_ratings)

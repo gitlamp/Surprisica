@@ -103,15 +103,14 @@ class EACA_Post(CSR):
 
         # compute weighted average
         sum_sim = num_csim = sum_ratings = actual_k = 0
-        actual_csim = []
+        actual_ck = []
         for k in k_neighbors:
             uid, sim, r, cnx = k
             in_cnx = False
             for ck in cnx:
                 if self.csim[c, ck] > self.delta:
                     in_cnx = True
-                    actual_csim.append(ck)
-
+                    actual_ck.append((uid, ck))
             if in_cnx:
                 num_csim += 1
 
@@ -125,6 +124,6 @@ class EACA_Post(CSR):
 
         est += (sum_ratings / sum_sim) * (num_csim / actual_k)
 
-        actual_csim = np.unique([self.trainset.to_raw_cid(c) for c in actual_csim if actual_csim], axis=0).tolist()
-        details = {'actual_k': actual_k, 'actual_sim_cnx': actual_csim}
+        actual_sim_cnx = [(self.trainset.to_raw_uid(u), self.trainset.to_raw_cid(c)) for u, c in actual_ck if actual_ck]
+        details = {'actual_k': actual_k, 'actual_sim_cnx': actual_sim_cnx}
         return est, details

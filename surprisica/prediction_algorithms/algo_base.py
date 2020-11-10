@@ -1,8 +1,6 @@
 
 from __future__ import (absolute_import, print_function, unicode_literals, division)
 
-import pyximport; pyximport.install()
-
 from .. import utils as simfunc
 from .predictions import Prediction
 from .predictions import PredictionImpossible
@@ -20,10 +18,10 @@ class AlgoBase:
 
     def predict(self, uid, iid, cid=None, r_ui=None, clip=True, verbose=False):
         if isinstance(cid, list):
-            pred = self.multiple_predict(uid, iid, cid, r_ui, clip, verbose)
+            pred = self.multiple_predict(uid, iid, cid, r_ui, clip)
 
         else:
-            pred = self.single_predict(uid, iid, cid, r_ui, clip, verbose)
+            pred = self.single_predict(uid, iid, cid, r_ui, clip)
 
         if verbose and isinstance(pred, list):
             [print(t) for t in pred]
@@ -48,27 +46,33 @@ class AlgoBase:
         return predictions
 
     def compute_similarities(self):
-        construct_func = {'cosine': simfunc.cosine,
-                          'msd': simfunc.msd,
-                          'asymmetric_cosine': simfunc.asymmetric_cosine,
-                          'asymmetric_msd': simfunc.asymmetric_msd,
-                          'user_influence': simfunc.usr_influence_cos}
+        construct_func = {'cosine': {'func': simfunc.cosine},
+                          'msd': {'func': simfunc.msd},
+                          'asymmetric_cosine': {'func': simfunc.asymmetric_cosine},
+                          'asymmetric_msd': {'func': simfunc.asymmetric_msd},
+                          'sorensen_idf': {'func': simfunc.sorensen_idf},
+                          'user_influence': {'func': simfunc.usr_influence_cos}}
         name = self.sim_options.get('name', 'cosine').lower()
 
-        n_x, yr, n_y, xr = self.trainset.n_users, self.trainset.ir, self.trainset.n_items, self.trainset.ur
+        n_x, yr, n_y, xr, yv = self.trainset.n_users,\
+                                    self.trainset.ir,\
+                                    self.trainset.n_items,\
+                                    self.trainset.ur,\
+                                    self.trainset.iv
         min_support = self.sim_options.get('min_support', 1)
-        args = [n_x, yr, min_support]
+        construct_func['cosine']['param'] = construct_func['msd']['param'] = [n_x, yr, min_support]
+        construct_func['asymmetric_cosine']['param'] = construct_func['asymmetric_msd']['param'] = [n_x, yr, xr, min_support]
+        construct_func['sorensen_idf']['param'] = [n_x, yv, n_y]
+        construct_func['user_influence']['param'] = [n_x, yr, n_y, xr, min_support]
 
-        if name == 'asymmetric_cosine' or name == 'asymmetric_msd':
-            args.insert(2, xr)
-        if name == 'user_influence':
-            args.insert(2, n_y)
-            args.insert(3, xr)
+        for sim_name in construct_func:
+            if name == sim_name:
+                args = construct_func[sim_name]['param']
 
         try:
             if getattr(self, 'verbose', False):
                 print('Computing the {0} similarity matrix ...'.format(name))
-            sim = construct_func[name](*args)
+            sim = construct_func[name]['func'](*args)
             if getattr(self, 'verbose', False):
                 print('Done computing similarity matrix.')
             return sim
@@ -84,7 +88,7 @@ class AlgoBase:
 
         return k_nearest_neighbors
 
-    def single_predict(self, uid, iid, cid=None, r_ui=None, clip=True, verbose=False):
+    def single_predict(self, uid, iid, cid=None, r_ui=None, clip=True):
         # Convert raw ids to inner ids
         try:
             iuid = self.trainset.to_inner_uid(uid)
@@ -131,7 +135,7 @@ class AlgoBase:
 
         return pred
 
-    def multiple_predict(self, uid, iid, cid=None, r_ui=None, clip=True, verbose=False):
+    def multiple_predict(self, uid, iid, cid=None, r_ui=None, clip=True):
         # Convert raw ids to inner ids
         try:
             iuid = self.trainset.to_inner_uid(uid)

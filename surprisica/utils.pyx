@@ -1,8 +1,8 @@
 
 from __future__ import (absolute_import, print_function, unicode_literals, division)
 
-cimport numpy as np
 import numpy as np
+cimport numpy as np
 import numbers
 from six import iteritems
 
@@ -100,7 +100,7 @@ def asymmetric_cosine(n_x, yr, xr, min_support):
     cdef np.ndarray[np.double_t, ndim=2] sim
 
     cdef int xi, xj
-    cdef double ri,rj
+    cdef double ri, rj
     cdef int min_sprt = min_support
 
     prods = np.zeros((n_x, n_x), np.double)
@@ -167,6 +167,43 @@ def asymmetric_msd(n_x, yr, xr, min_support, L=16):
                 asym_coeff = freq[xi, xj] / len(xr[xi])
                 sorensen_dice_coeff = (2 * freq[xi, xj]) / (len(xr[xi]) + len(xr[xj]))
                 sim[xi, xj] = msd * asym_coeff * sorensen_dice_coeff
+
+    return sim
+
+
+def sorensen_idf(n_x, yv, n_y):
+    # the visiting matrix
+    cdef np.double_t[:] visit
+    # the inverse item freq for x
+    cdef np.ndarray[np.double_t, ndim=2] xiif
+    # the similarity matrix
+    cdef np.ndarray[np.double_t, ndim=2] sim
+
+    cdef int xi, xj
+
+    visit = np.zeros(n_y, np.double)
+    xiif = np.zeros((n_x, n_y), np.double)
+    sim = np.zeros((n_x, n_x), np.double)
+    cal_iif = np.vectorize(lambda x: np.log10(np.sum(visit) / x)
+                           if x > 0 else 0)
+
+    for y, y_ratings in iteritems(yv):
+        for _, v in y_ratings:
+            visit[y] += v
+
+    iif = cal_iif(visit)
+
+    for y, y_ratings in iteritems(yv):
+        for xi, v in y_ratings:
+            xiif[xi, y] += iif[y]
+
+    for y, y_ratings in iteritems(yv):
+        for xi, _ in y_ratings:
+            for xj, _ in y_ratings:
+                if xi == xj:
+                    sim[xi, xj] = 1
+                else:
+                    sim[xi, xj] += 2 * (iif[y]) / (xiif[xi].sum() + xiif[xj].sum())
 
     return sim
 
