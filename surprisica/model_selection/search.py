@@ -1,7 +1,4 @@
-
 from __future__ import (absolute_import, print_function, unicode_literals, division)
-
-import pyximport; pyximport.install()
 
 import numpy as np
 from abc import ABCMeta, abstractmethod
@@ -17,6 +14,7 @@ from ..utils import get_rng
 
 
 class BaseSearchCV(with_metaclass(ABCMeta)):
+    """Base class for hyper parameter search with cross-validation."""
     @abstractmethod
     def __init__(self, algo_class, measures=['rmse', 'mae'], cv=None,
                  refit=False, return_train_measures=False, n_jobs=1,
@@ -61,6 +59,7 @@ class BaseSearchCV(with_metaclass(ABCMeta)):
         return params
 
     def fit(self, data):
+        """Run ``fit()`` method of the algorithm for all given parameters in cross validation."""
         if self.refit and isinstance(data, DatasetUserFolds):
             raise ValueError('refit cannot be used when data has been '
                              'loaded with load_from_folds().')
@@ -157,12 +156,22 @@ class BaseSearchCV(with_metaclass(ABCMeta)):
         self.cv_results = cv_results
 
     def test(self, testset, verbose=False):
+        """Call ``test()`` method of estimator with best found parameters.
+
+        Check :meth:`<surprisica.prediction_algorithms.algo_base.AlgoBase.test()`
+        Args:
+            testset: The testset returned by `test()` method
+            verbose: Whether to print details of the prediction.  Default
+                is False."""
         if not self.refit:
             raise ValueError('refit is False, cannot use test()')
 
         return self.best_estimator[self.refit].test(testset, verbose)
 
     def predict(self, *args):
+        """Call ``predict()`` method of estimator with best found parameters.
+
+        Check :meth:`predict()<surprisica.prediction_algorithms.algo_base.AlgoBase.predict()`"""
         if not self.refit:
             raise ValueError('refit is False, cannot use predict()')
 
@@ -170,10 +179,44 @@ class BaseSearchCV(with_metaclass(ABCMeta)):
 
 
 class GridSearchCV(BaseSearchCV):
+    """Computes accuracy metrics for an algorithm on various parameters, over a
+    cross-validation procedure. This helps in finding best set of parameters for
+    prediction.
+
+    Args:
+        algo_class(:obj:`AlgoBase\
+            <surprisica.prediction_algorithms.algo_base.AlgoBase>`): The class of the algorithm to evaluate.
+        param_grid(dict): A dictionary containing different set of parameters for the algorithm.
+        measures(list or str): A list containing names of metrics for evaluation. Defaults are
+            ``RMSE`` and ``MAE``.
+        cv(int or None): Determines how data will be split. :class:`KFold<surprisica.model_selection.split.KFold>`
+            is used here. Default is None.
+        refit(bool or str): If ``True``, refit the algorithm on the whole
+            dataset using the set of parameters that gave the best average
+            performance for the first measure of ``measures``. Other measures
+            can be used by passing a string (corresponding to the measure
+            name). Then, you can use the ``test()`` and ``predict()`` methods.
+            ``refit`` can only be used if the ``data`` parameter given to
+            ``fit()`` hasn't been loaded with :meth:`load_from_folds()
+            <surprisica.dataset.Dataset.load_from_folds>`. Default is ``False``.
+        return_train_measures(bool): Whether to compute performance measures on
+            the trainsets. If ``True``, the ``cv_results`` attribute will
+            also contain measures for trainsets. Default is ``False``.
+        n_jobs(int): The maximum number of parallel training.
+            - If ``-1``, all CPUs are used.
+            - If ``1`` is given, no parallel computing code is used at all,\
+            which is useful for debugging.
+            - For ``n_jobs`` below ``-1``, ``(n_cpus + n_jobs + 1)`` are\
+            used. For example, with ``n_jobs = -2`` all CPUs but one are\
+            used.
+            Default is ``1``.
+        pre_dispatch(int or str): Controls the number of jobs that get dispatched
+            during parallel execution.
+        joblib_verbose(int): Controls the verbosity of joblib."""
+
     def __init__(self, algo_class, param_grid, measures=['rmse', 'mae'],
                  cv=None, refit=False, return_train_measures=False, n_jobs=1,
                  pre_dispatch='2*n_jobs', joblib_verbose=0):
-
         super(GridSearchCV, self).__init__(
             algo_class=algo_class, measures=measures, cv=cv, refit=refit,
             return_train_measures=return_train_measures, n_jobs=n_jobs,
@@ -185,6 +228,82 @@ class GridSearchCV(BaseSearchCV):
 
 
 class RandomizedSearchCV(BaseSearchCV):
+    """Computes accuracy metrics for an algorithm on various combinations of parameters,
+    over a cross-validation procedure.
+
+    Args:
+        algo_class(:obj:`AlgoBase\
+            <surprisica.prediction_algorithms.algo_base.AlgoBase>`): The class of the algorithm to evaluate.
+        param_distributions(dict): Dictionary with algorithm parameters as
+            keys and distributions or lists of parameters to try. Distributions
+            must provide a rvs method for sampling (such as those from
+            scipy.stats.distributions). If a list is given, it is sampled
+            uniformly. Parameters will be sampled n_iter times.
+        n_iter(int): Number of times parameter settings are sampled. Default is
+            ``10``.
+        measures(list or str): The performance measures to compute. Allowed
+            names are function names as defined in the :mod:`accuracy\
+            <surprisica.accuracy>` module.  Default is ``['rmse', 'mae']``.
+        cv(int or None): Determines how the
+            ``data`` parameter will be split (i.e. how trainsets and testsets
+            will be defined). If an int is passed, :class:`KFold\
+            <surprisica.model_selection.split.KFold>` is used with the
+            appropriate ``n_splits`` parameter. If ``None``, :class:`KFold\
+            <surprisica.model_selection.split.KFold>` is used with
+            ``n_splits=5``.
+        refit(bool or str): If ``True``, refit the algorithm on the whole
+            dataset using the set of parameters that gave the best average
+            performance for the first measure of ``measures``. Other measures
+            can be used by passing a string (corresponding to the measure
+            name). Then, you can use the ``test()`` and ``predict()`` methods.
+            ``refit`` can only be used if the ``data`` parameter given to
+            ``fit()`` hasn't been loaded with :meth:`load_from_folds()\
+            <surprisica.dataset.Dataset.load_from_folds>`. Default is ``False``.
+        return_train_measures(bool): Whether to compute performance measures on
+            the trainsets. If ``True``, the ``cv_results`` attribute will
+            also contain measures for trainsets. Default is ``False``.
+        n_jobs(int): The maximum number of parallel training procedures.
+            - If ``-1``, all CPUs are used.
+            - If ``1`` is given, no parallel computing code is used at all,\
+                which is useful for debugging.
+            - For ``n_jobs`` below ``-1``, ``(n_cpus + n_jobs + 1)`` are\
+                used.  For example, with ``n_jobs = -2`` all CPUs but one are\
+                used.
+            Default is ``1``.
+        pre_dispatch(int or str): Controls the number of jobs that get
+            dispatched during parallel execution.
+        random_state(int, RandomState or None): Pseudo random number
+            generator seed used for random uniform sampling from lists of
+            possible values instead of scipy.stats distributions. If int,
+            ``random_state`` is the seed used by the random number generator.
+            If ``RandomState`` instance, ``random_state`` is the random number
+            generator. If ``None``, the random number generator is the
+            RandomState instance used by ``np.random``.  Default is ``None``.
+        joblib_verbose(int): Controls the verbosity of joblib: the higher, the
+            more messages.
+
+    Attributes:
+        best_estimator(dict of AlgoBase):
+            Using an accuracy measure as key, get the algorithm that gave the
+            best accuracy results for the chosen measure, averaged over all
+            splits.
+        best_score(dict of floats):
+            Using an accuracy measure as key, get the best average score
+            achieved for that measure.
+        best_params(dict of dicts):
+            Using an accuracy measure as key, get the parameters combination
+            that gave the best accuracy results for the chosen measure (on
+            average).
+        best_index(dict of ints):
+            Using an accuracy measure as key, get the index that can be used
+            with ``cv_results`` that achieved the highest accuracy for that
+            measure (on average).
+        cv_results(dict of arrays):
+            A dict that contains accuracy measures over all splits, as well as
+            train and test time for each parameter combination. Can be imported
+            into a pandas `DataFrame` (see :ref:`example
+            <cv_results_example>`)."""
+
     def __init__(self, algo_class, param_distributions, n_iter=10,
                  measures=['rmse', 'mae'], cv=None, refit=False,
                  return_train_measures=False, n_jobs=1,
@@ -204,6 +323,37 @@ class RandomizedSearchCV(BaseSearchCV):
 
     @staticmethod
     def _sample_parameters(param_distributions, n_iter, random_state=None):
+        """Samples ``n_iter`` parameter combinations from
+        ``param_distributions`` using ``random_state`` as a seed.
+        Non-deterministic iterable over random candidate combinations for
+        hyper-parameter search. If all parameters are presented as a list,
+        sampling without replacement is performed. If at least one parameter
+        is given as a distribution, sampling with replacement is used.
+        It is highly recommended to use continuous distributions for continuous
+        parameters.
+        Note that before SciPy 0.16, the ``scipy.stats.distributions`` do not
+        accept a custom RNG instance and always use the singleton RNG from
+        ``numpy.random``. Hence setting ``random_state`` will not guarantee a
+        deterministic iteration whenever ``scipy.stats`` distributions are used
+        to define the parameter search space. Deterministic behavior is however
+        guaranteed from SciPy 0.16 onwards.
+
+        Args:
+            param_distributions(dict): Dictionary where the keys are
+                parameters and values are distributions from which a parameter
+                is to be sampled. Distributions either have to provide a
+                ``rvs`` function to sample from them, or can be given as a list
+                 of values, where a uniform distribution is assumed.
+            n_iter(int): Number of parameter settings produced.
+                Default is ``10``.
+            random_state(int, RandomState instance or None):
+                Pseudo random number generator seed used for random uniform
+                sampling from lists of possible values instead of scipy.stats
+                distributions. If ``None``, the random number generator is the
+                random state instance used by np.random.  Default is ``None``.
+        Returns:
+            combos(list): List of parameter dictionaries with sampled values."""
+
         # check if all distributions are given as lists
         # if so, sample without replacement
         all_lists = np.all([not hasattr(v, 'rvs')

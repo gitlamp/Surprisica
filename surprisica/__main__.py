@@ -6,6 +6,7 @@ import argparse
 import random
 import numpy as np
 
+from surprisica import Reader #noqa
 from surprisica import Dataset
 from surprisica.prediction_algorithms import KNNBasic
 from surprisica.prediction_algorithms import KNNWithMeans

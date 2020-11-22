@@ -1,4 +1,3 @@
-
 from __future__ import (absolute_import, print_function, unicode_literals, division)
 
 import os
@@ -12,6 +11,11 @@ from .trainset import Trainset
 
 
 class Dataset(Dataset):
+    """Base class for loading dataset.
+
+    Note that you should never instantiate the :class:`Dataset` class directly
+    (same goes for its delivered classes), but instead use one of the two available
+    methods for loading data."""
 
     def __init__(self, reader):
         super(Dataset, self).__init__(reader)
@@ -19,18 +23,37 @@ class Dataset(Dataset):
 
     @classmethod
     def load_from_df(cls, df, reader):
+        """Load from a dataframe.
+
+        Use this if your custom dataset is in pandas dataframe format.
+
+        Args:
+            df: The dataframe containing the ratings. It must have three columns,
+            corresponding to user (raw) ids, item (raw) ids and timestamps.
+            reader(:obj:`Reader<surprisica.reader.Reader>`): A reader to read the file.
+        Returns:
+            rating profile"""
         ratings = cls.create_profile(df=df, reader=reader)
 
         return DatasetAutoFolds(df=ratings, reader=reader)
 
     @classmethod
     def load_from_file(cls, path, reader):
+        """Load from a path/file.
+
+        Use this if your custom dataset is in .csv format.
+
+        Args:
+            reader(:obj:`Reader<surprisica.reader.Reader>`): A reader to read the file.
+        Returns:
+            rating profile"""
         ratings = cls.read_ratings(cls, file_name=path, reader=reader)
 
         return DatasetAutoFolds(df=ratings, reader=reader)
 
     @classmethod
     def create_profile(cls, df, reader):
+        """Create rating profile."""
         if reader.context:
             ratings = cls.create_rating_profile(df, reader)
             contexts = cls.create_context_profile(df, reader)
@@ -43,6 +66,14 @@ class Dataset(Dataset):
 
     @staticmethod
     def create_rating_profile(df, reader):
+        """Generate ratings of each location based the number of visits
+        in each location.
+
+        Args:
+            df: raw rating in pandas dataframe format.
+            reader(:obj:`Reader<surprisica.reader.Reader>`): A reader to read the file.
+        Returns:
+            A dataframe containing user ids, item ids, rating and number of visits from each item"""
         col = df.columns.to_list()
         uid = col[0]
         iid = col[1]
@@ -55,6 +86,13 @@ class Dataset(Dataset):
 
     @staticmethod
     def create_context_profile(df, reader):
+        """Generate the context profile regarding visits.
+
+        Args:
+            df: raw rating in pandas dataframe format.
+            reader(:obj:`Reader<surprisica.reader.Reader>`): A reader to read the file.
+        Returns:
+            A dataframe containing item ids, contexts, weights of contexts"""
         col = df.columns.to_list()
         col.remove(col[2])
         lid = col[1]
@@ -138,8 +176,6 @@ class Dataset(Dataset):
                     uc[uid].sort()
                     ic[iid].sort()
 
-                n_contexts = len(raw2inner_id_contexts)
-
         n_users = len(ur)
         n_items = len(ir)
         n_ratings = len(raw_trainset)
@@ -161,6 +197,8 @@ class Dataset(Dataset):
         return trainset
 
     def read_ratings(self, file_name, reader):
+        """Return a list of ratings (user, item, rating, timestamp, ...) read from
+        .csv file."""
         ratings = []
         try:
             raw_ratings = pd.read_csv(file_name,
@@ -183,6 +221,9 @@ class Dataset(Dataset):
 
 
 class DatasetUserFolds(Dataset):
+    """A derived class from :class:`Dataset` for which folds (for
+        cross-validation) are predefined."""
+
     def __init__(self, folds_files=None, reader=None):
 
         Dataset.__init__(self, reader)
@@ -196,6 +237,10 @@ class DatasetUserFolds(Dataset):
 
 
 class DatasetAutoFolds(Dataset):
+    """A derived class from :class:`Dataset` for which folds (for
+    cross-validation) are not predefined. (Or for when there are no folds at
+    all)."""
+
     def __init__(self, df=None, reader=None):
         super(DatasetAutoFolds, self).__init__(reader=reader)
 
@@ -219,7 +264,7 @@ class DatasetAutoFolds(Dataset):
                 dets = {}
                 for t in group.itertuples(index=False, name=None):
                     cnum = len(reader.cnx_entities)
-                    all_c.append((t[3:3+cnum]))
+                    all_c.append((t[3:3 + cnum]))
                     all_cw.append(float(t[-1]))
                 # Input context weights and inverse item frequency of visits
                 dets['cw'], dets['visit'] = all_cw, v
@@ -232,4 +277,9 @@ class DatasetAutoFolds(Dataset):
                 self.raw_ratings.append((uid, iid, float(r), dets))
 
     def build_full_trainset(self):
+        """Do not split the dataset into folds and just return a trainset as
+        is, built from the whole dataset.
+
+        Returns:
+            A :class:`Trainset<surprisica.Trainset>` class"""
         return self.construct_trainset(self.raw_ratings)

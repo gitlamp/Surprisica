@@ -1,7 +1,4 @@
-
 from __future__ import (absolute_import, print_function, unicode_literals, division)
-
-import pyximport; pyximport.install()
 
 import numbers
 import numpy as np
@@ -10,10 +7,12 @@ from math import ceil, floor
 from collections import defaultdict
 from six import iteritems
 from six import string_types
+
 from ..utils import get_rng
 
 
 def get_cv(cv):
+    """Returned a 'validated' CV iterator."""
     if cv is None:
         return KFold(n_splits=5)
     if isinstance(cv, numbers.Integral):
@@ -26,6 +25,24 @@ def get_cv(cv):
 
 
 class KFold():
+    """A basic cross-validation iterator.
+
+    Each fold is used once as a testset while the k - 1 remaining folds are
+    used for training.
+
+    Args:
+        n_splits(int): The number of folds.
+        random_state(int, RandomState instance from numpy, or None):
+            Determines the RNG that will be used for determining the folds. If
+            int, ``random_state`` will be used as a seed for a new RNG. This is
+            useful to get the same splits over multiple calls to ``split()``.
+            If RandomState instance, this same instance is used as RNG. If
+            ``None``, the current RNG from numpy is used. ``random_state`` is
+            only used if ``shuffle`` is ``True``.  Default is ``None``.
+        shuffle(bool): Whether to shuffle the ratings in the ``data`` parameter
+            of the ``split()`` method. Shuffling is not done in-place. Default
+            is ``True``."""
+
     def __init__(self, n_splits=5, random_state=None, shuffle=True):
 
         self.n_splits = n_splits
@@ -33,6 +50,12 @@ class KFold():
         self.random_state = random_state
 
     def split(self, data):
+        """Generator function to iterate over trainsets and testsets.
+        Args:
+           data(:obj:`Dataset<surprisica.dataset.Dataset>`): The data containing
+               ratings that will be divided into trainsets and testsets.
+        Yields:
+            tuple of (trainset, testset)"""
         if self.n_splits > len(data.raw_ratings) or self.n_splits < 2:
             raise ValueError('Incorrect value for n_splits={0}. '
                              'Must be >=2 and less than the number '
@@ -66,6 +89,25 @@ class KFold():
 
 
 class RepeatedKFold():
+    """Repeated :class:`KFold` cross validator.
+
+    Repeats :class:`KFold` n times with different randomization in each
+    repetition.
+
+    Args:
+        n_splits(int): The number of folds.
+        n_repeats(int): The number of repetitions.
+        random_state(int, RandomState instance from numpy, or None):
+            Determines the RNG that will be used for determining the folds. If
+            int, ``random_state`` will be used as a seed for a new RNG. This is
+            useful to get the same splits over multiple calls to ``split()``.
+            If RandomState instance, this same instance is used as RNG. If
+            ``None``, the current RNG from numpy is used. ``random_state`` is
+            only used if ``shuffle`` is ``True``.  Default is ``None``.
+        shuffle(bool): Whether to shuffle the ratings in the ``data`` parameter
+            of the ``split()`` method. Shuffling is not done in-place. Default
+            is ``True``."""
+
     def __init__(self, n_splits=5, n_repeats=10, random_state=None):
 
         self.n_repeats = n_repeats
@@ -73,6 +115,13 @@ class RepeatedKFold():
         self.n_splits = n_splits
 
     def split(self, data):
+        """Generator function to iterate over trainsets and testsets.
+
+        Args:
+            data(:obj:`Dataset<surprisica.dataset.Dataset>`): The data containing
+                ratings that will be divided into trainsets and testsets.
+        Yields:
+            tuple of (trainset, testset)"""
         rng = get_rng(self.random_state)
 
         for _ in range(self.n_repeats):
@@ -86,6 +135,38 @@ class RepeatedKFold():
 
 
 class ShuffleSplit():
+    """A basic cross-validation iterator with random trainsets and testsets.
+
+    Contrary to other cross-validation strategies, random splits do not
+    guarantee that all folds will be different, although this is still very
+    likely for sizeable datasets.
+    See an example in the :ref:`User Guide <use_cross_validation_iterators>`.
+
+    Args:
+        n_splits(int): The number of folds.
+        test_size(float or int None): If float, it represents the
+            proportion of ratings to include in the testset. If int,
+            represents the absolute number of ratings in the testset. If
+            ``None``, the value is set to the complement of the trainset size.
+            Default is ``.2``.
+        train_size(float or int or None): If float, it represents the
+            proportion of ratings to include in the trainset. If int,
+            represents the absolute number of ratings in the trainset. If
+            ``None``, the value is set to the complement of the testset size.
+            Default is ``None``.
+        random_state(int, RandomState instance from numpy, or None):
+            Determines the RNG that will be used for determining the folds. If
+            int, ``random_state`` will be used as a seed for a new RNG. This is
+            useful to get the same splits over multiple calls to ``split()``.
+            If RandomState instance, this same instance is used as RNG. If
+            ``None``, the current RNG from numpy is used. ``random_state`` is
+            only used if ``shuffle`` is ``True``.  Default is ``None``.
+        shuffle(bool): Whether to shuffle the ratings in the ``data`` parameter
+            of the ``split()`` method. Shuffling is not done in-place. Setting
+            this to `False` defeats the purpose of this iterator, but it's
+            useful for the implementation of :func:`train_test_split`. Default
+            is ``True``."""
+
     def __init__(self, n_splits=5, test_size=.2, train_size=None,
                  random_state=None, shuffle=True):
 
@@ -136,6 +217,13 @@ class ShuffleSplit():
         return int(train_size), int(test_size)
 
     def split(self, data):
+        """Generator function to iterate over trainsets and testsets.
+
+        Args:
+            data(:obj:`Dataset<surprisica.dataset.Dataset>`): The data containing
+                ratings that will be divided into trainsets and testsets.
+        Yields:
+            tuple of (trainset, testset)"""
         test_size, train_size = self.validate_train_test_sizes(
             self.test_size, self.train_size, len(data.raw_ratings))
         rng = get_rng(self.random_state)
@@ -164,12 +252,62 @@ class ShuffleSplit():
 
 def train_test_split(data, test_size=.2, train_size=None, random_state=None,
                      shuffle=True):
+    """Split a dataset into trainset and testset.
+
+    Note: this function cannot be used as a cross-validation iterator.
+
+    Args:
+        data(:obj:`Dataset <surprisica.dataset.Dataset>`): The dataset to split
+            into trainset and testset.
+        test_size(float or int None): If float, it represents the
+            proportion of ratings to include in the testset. If int,
+            represents the absolute number of ratings in the testset. If
+            ``None``, the value is set to the complement of the trainset size.
+            Default is ``.2``.
+        train_size(float or int or None): If float, it represents the
+            proportion of ratings to include in the trainset. If int,
+            represents the absolute number of ratings in the trainset. If
+            ``None``, the value is set to the complement of the testset size.
+            Default is ``None``.
+        random_state(int, RandomState instance from numpy, or None):
+            Determines the RNG that will be used for determining the folds. If
+            int, ``random_state`` will be used as a seed for a new RNG. This is
+            useful to get the same splits over multiple calls to ``split()``.
+            If RandomState instance, this same instance is used as RNG. If
+            ``None``, the current RNG from numpy is used. ``random_state`` is
+            only used if ``shuffle`` is ``True``.  Default is ``None``.
+        shuffle(bool): Whether to shuffle the ratings in the ``data``
+            parameter. Shuffling is not done in-place. Default is ``True``."""
+
     ss = ShuffleSplit(n_splits=1, test_size=test_size, train_size=train_size,
                       random_state=random_state, shuffle=shuffle)
     return next(ss.split(data))
 
 
 class LeaveOneOut():
+    """Cross-validation iterator where each user has exactly one rating in the
+    testset.
+
+    Contrary to other cross-validation strategies, ``LeaveOneOut`` does not
+    guarantee that all folds will be different, although this is still very
+    likely for sizeable datasets.
+
+    Args:
+        n_splits(int): The number of folds.
+        random_state(int, RandomState instance from numpy, or None):
+            Determines the RNG that will be used for determining the folds. If
+            int, ``random_state`` will be used as a seed for a new RNG. This is
+            useful to get the same splits over multiple calls to ``split()``.
+            If RandomState instance, this same instance is used as RNG. If
+            ``None``, the current RNG from numpy is used. ``random_state`` is
+            only used if ``shuffle`` is ``True``.  Default is ``None``.
+        min_n_ratings(int): Minimum number of ratings for each user in the
+            trainset. E.g. if ``min_n_ratings`` is ``2``, we are sure each user
+            has at least ``2`` ratings in the trainset (and ``1`` in the
+            testset). Other users are discarded. Default is ``0``, so some
+            users (having only one rating) may be in the testset and not in the
+            trainset."""
+
     def __init__(self, n_splits=5, random_state=None, min_n_ratings=0):
 
         self.n_splits = n_splits
@@ -177,6 +315,13 @@ class LeaveOneOut():
         self.min_n_ratings = min_n_ratings
 
     def split(self, data):
+        """Generator function to iterate over trainsets and testsets.
+        Args:
+            data(:obj:`Dataset<surprisica.dataset.Dataset>`): The data containing
+                ratings that will be divided into trainsets and testsets.
+        Yields:
+            tuple of (trainset, testset)"""
+
         # map ratings to the users ids
         user_ratings = defaultdict(list)
         for uid, iid, r_ui, _ in data.raw_ratings:
@@ -209,10 +354,12 @@ class LeaveOneOut():
 
 
 class PredefinedKFold():
+    """A cross-validation iterator to when a dataset has been loaded with the
+    :meth:`load_from_folds <surprisica.dataset.Dataset.load_from_folds>`
+    method."""
     def split(self, data):
         self.n_splits = len(data.folds_files)
         for train_file, test_file in data.folds_files:
-
             raw_trainset = data.read_ratings(train_file)
             raw_testset = data.read_ratings(test_file)
             trainset = data.construct_trainset(raw_trainset)
@@ -221,5 +368,4 @@ class PredefinedKFold():
             yield trainset, testset
 
     def get_n_folds(self):
-
         return self.n_splits

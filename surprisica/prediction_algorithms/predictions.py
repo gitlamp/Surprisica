@@ -5,12 +5,24 @@ from collections import namedtuple
 
 
 class PredictionImpossible(Exception):
+    """Exception raised when a prediction is impossible.
+    When raised, the estimation :math:`\hat{r}_{ui}` is set to the global mean
+    of all ratings :math:`\mu`."""
     pass
 
 
 class Prediction(namedtuple('Prediction',
                             ['uid', 'iid', 'cid', 'r_ui', 'est', 'details'])):
-    __slots__ = ()
+    """A named tuple for storing the results of a prediction.
+   It's wrapped in a class, but only for documentation and printing purposes.
+
+    Args:
+       uid:() The raw user id.
+       iid:() The raw item id.
+       cid:(tuple) The raw context id.
+       r_ui(float): The true rating :math:`r_{ui}`.
+       est:(float) The estimated rating :math:`\\hat{r}_{ui}`.
+       details(dict): A dictionary containing all details related to predictions."""
 
     def __str__(self):
         s = 'user: {uid:<10} '.format(uid=self.uid)

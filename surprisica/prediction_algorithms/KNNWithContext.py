@@ -1,9 +1,7 @@
 
 from __future__ import (absolute_import, print_function, unicode_literals, division)
 
-import pyximport; pyximport.install()
 import heapq
-import numpy as np
 
 from .. import utils as simfunc
 from .KNN import KNNWithMeans
@@ -11,6 +9,39 @@ from .predictions import PredictionImpossible
 
 
 class CSR(KNNWithMeans):
+    """A collaborative filtering algorithm, taking into account the context
+    similarity between target user and its neighbors, and also the mean of ratings of each user.
+
+    The prediction :math:`\\hat{r}_{ui}` is set as:
+
+    .. math::
+        \hat{r}_{ui} = \mu_u + \\frac{\\sum\\limits_{v \in N^k_i(u)}
+        \\text{sim}(u, v) \cdot (r_{vi} - \mu_v)} {\\sum\\limits_{v \in
+        N^k_i(u)} \\text{sim}(u, v)}
+    \\
+
+    .. math::
+        P(c_{u}|i_{j}) = \\frac{count(i_{j} \wedge C_{u} = c_{u})}{count(i_{j})}
+    \\
+
+    .. math::
+        \hat{r}\prime_{ui} = \hat{r}_{ui} * P(c_{u}|i_{j})
+
+
+    Args:
+        k(int): The (max) number of neighbors to take into account for
+            aggregation. Default is ``5``.
+        min_k(int): The minimum number of neighbors to take into account for
+            aggregation. If there are not enough neighbors, the neighbor
+            aggregation is set to zero (so the prediction ends up being
+            equivalent to the mean :math:`\mu_u` or :math:`\mu_i`). Default is
+            ``1``.
+        sim_options(dict): A dictionary of options for the similarity
+            measure. See :ref:`similarity_measures_configuration` for accepted
+            options.
+        verbose(bool): Whether to print trace messages of bias estimation,
+            similarity, etc. Default is True."""
+
     def __init__(self, k=5, min_k=1, verbose=False, **kwargs):
         super(CSR, self).__init__(k, min_k, verbose, **kwargs)
 
@@ -76,6 +107,41 @@ class CSR(KNNWithMeans):
 
 
 class EACA_Post(CSR):
+    """A collaborative filtering algorithm, taking into account the context
+    similarity between target user and its neighbors, and also the mean of ratings of each user.
+
+    This method use a post-filtering approach to apply contexts on collaborative filtering.
+    A probability of selecting each item is calculated to find a fraction of users having
+    contexts similarity bigger than :math:`\\delta_{cnx}` to the target user's context.
+    The prediction :math:`\\hat{r}_{ui}` is set as:
+
+    .. math::
+        \hat{r}_{ui} = \mu_u + \\frac{\\sum\\limits_{v \in N^k_i(u)}
+        \\text{sim}(u, v) \cdot (r_{vi} - \mu_v)} {\\sum\\limits_{v \in
+        N^k_i(u)} \\text{sim}(u, v)}
+    \\
+
+    .. math::
+        P_{c}(u_{a},i) = \\frac{|u|u \in neighbors \wedge visit(u,i,c) \wedge CSim(c,current_c) > \delta_{cnx}|}{|neighbors|}
+    \\
+
+    .. math::
+        \hat{r}\prime_{ui} = \hat{r}_{ui} * P_{c}(u_{a},i)
+
+
+    Args:
+        k(int): The (max) number of neighbors to take into account for
+            aggregation. Default is ``5``.
+        min_k(int): The minimum number of neighbors to take into account for
+            aggregation. If there are not enough neighbors, the neighbor
+            aggregation is set to zero (so the prediction ends up being
+            equivalent to the mean :math:`\mu_u` or :math:`\mu_i`). Default is
+            ``1``.
+        sim_options(dict): A dictionary of options for the similarity
+            measure. See :ref:`similarity_measures_configuration` for accepted
+            options.
+        verbose(bool): Whether to print trace messages of bias estimation,
+            similarity, etc. Default is True."""
 
     def __init__(self, k=5, min_k=1, verbose=False, **kwargs):
         super(EACA_Post, self).__init__(k, min_k, verbose, **kwargs)

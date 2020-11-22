@@ -1,7 +1,6 @@
 
 from __future__ import (absolute_import, print_function, unicode_literals, division)
 
-import pyximport; pyximport.install()
 import heapq
 import numpy as np
 from six import iteritems
@@ -11,6 +10,25 @@ from .predictions import PredictionImpossible
 
 
 class KNNBasic(AlgoBase):
+    """A basic collaborative filtering algorithm.
+
+    The prediction :math:`\\hat{r}_{ui}` is set as:
+
+    .. math::
+        \hat{r}_{ui} = \\frac{
+        \\sum\\limits_{v \in N^k_i(u)} \\text{sim}(u, v) \cdot r_{vi}}
+        {\\sum\\limits_{v \in N^k_i(u)} \\text{sim}(u, v)}
+
+    Args:
+        k(int): The (max) number of neighbors to take into account for
+            aggregation. Default is ``5``.
+        min_k(int): The minimum number of neighbors to take into account for
+            aggregation. If there are not enough neighbors, the prediction is
+            set to the global mean of all ratings. Default is ``1``.
+        sim_options(dict): A dictionary of options for the similarity
+            measure.
+        verbose(bool): Whether to print trace messages of bias estimation,
+            similarity, etc. Default is True."""
 
     def __init__(self, k=5, min_k=1, verbose=False, **kwargs):
         super(KNNBasic, self).__init__(**kwargs)
@@ -50,6 +68,30 @@ class KNNBasic(AlgoBase):
 
 
 class KNNWithMeans(KNNBasic):
+    """A basic collaborative filtering algorithm, taking into account the mean
+    ratings of each user.
+
+    The prediction :math:`\\hat{r}_{ui}` is set as:
+
+    .. math::
+        \hat{r}_{ui} = \mu_u + \\frac{ \\sum\\limits_{v \in N^k_i(u)}
+        \\text{sim}(u, v) \cdot (r_{vi} - \mu_v)} {\\sum\\limits_{v \in
+        N^k_i(u)} \\text{sim}(u, v)}
+
+    Args:
+        k(int): The (max) number of neighbors to take into account for
+            aggregation. Default is ``5``.
+        min_k(int): The minimum number of neighbors to take into account for
+            aggregation. If there are not enough neighbors, the neighbor
+            aggregation is set to zero (so the prediction ends up being
+            equivalent to the mean :math:`\mu_u` or :math:`\mu_i`). Default is
+            ``1``.
+        sim_options(dict): A dictionary of options for the similarity
+            measure. See :ref:`similarity_measures_configuration` for accepted
+            options.
+        verbose(bool): Whether to print trace messages of bias estimation,
+            similarity, etc. Default is True."""
+
     def __init__(self, k=5, min_k=1, verbose=False, **kwargs):
         super(KNNWithMeans, self).__init__(k, min_k, verbose, **kwargs)
 

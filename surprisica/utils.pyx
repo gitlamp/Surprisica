@@ -271,8 +271,7 @@ def get_rng(random_state):
 
     If random_state is None, use RandomState singleton from numpy.  Else if
     it's an integer, consider it's a seed and initialized an rng with that
-    seed. If it's already an rng, return it.
-    """
+    seed. If it's already an rng, return it."""
     if random_state is None:
         return np.random.mtrand._rand
     elif isinstance(random_state, (numbers.Integral, np.integer)):
@@ -285,7 +284,7 @@ def get_rng(random_state):
 
 
 def flatten(container):
-    """ Flatten unstructured list """
+    """Flatten unstructured list."""
     for i in container:
         if isinstance(i, list):
             for j in flatten(i):

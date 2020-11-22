@@ -5,6 +5,19 @@ import numpy as np
 
 
 class Reader:
+    """The Reader class is used to parse a file containing ratings.
+
+    Such a file is assumed to specify only one rating per line, and each line
+    needs to respect the following structure: ::
+        user ; location/item ; timestamp ; [context/contexts]
+    where the order of the fields and the separator (here ';') may be
+    arbitrarily defined. Brackets indicate that the timestamp
+    field is optional.
+
+    Args:
+        rating_scale(tuple): The scale of ratings used for each rating. Default is ``(1,5)``
+        line_format(str): The fields name. Please note that ``line_format`` is always space-separated.
+        sep(str): The separator between fields. Default is ``','``"""
 
     def __init__(self, rating_scale=(1, 5), line_format='user location timestamp', sep=','):
         self.sep = sep

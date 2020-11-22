@@ -8,7 +8,14 @@ from six import iteritems
 from .utils import flatten
 
 
-def rmse(predictions, verbose=True):
+def rmse(predictions, verbose=False):
+    """Compute RMSE (Root Mean Squared Error).
+
+    Args:
+        predictions: A list of predictions returned by :meth:`test()
+            <surprisica.prediction_algorithms.algo_base.AlgoBase.test()>`.
+        verbose: Whether to print details of the prediction.  Default
+            is False."""
     if not predictions:
         raise ValueError('Prediction list is empty.')
 
@@ -29,7 +36,14 @@ def rmse(predictions, verbose=True):
     return rmse_
 
 
-def mse(predictions, verbose=True):
+def mse(predictions, verbose=False):
+    """Compute MSE (Mean Squared Error).
+
+    Args:
+        predictions: A list of predictions returned by :meth:`test()
+            <surprisica.prediction_algorithms.algo_base.AlgoBase.test()>`.
+        verbose: Whether to print details of the prediction.  Default
+            is False."""
     if not predictions:
         raise ValueError('Prediction list is empty.')
 
@@ -49,7 +63,14 @@ def mse(predictions, verbose=True):
     return mse_
 
 
-def mae(predictions, verbose=True):
+def mae(predictions, verbose=False):
+    """Compute MAE (Mean Absolute Error).
+
+    Args:
+        predictions: A list of predictions returned by :meth:`test()
+            <surprisica.prediction_algorithms.algo_base.AlgoBase.test()>`.
+        verbose: Whether to print details of the prediction.  Default
+            is False."""
     if not predictions:
         raise ValueError('Prediction list is empty.')
 
