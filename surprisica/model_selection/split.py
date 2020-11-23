@@ -351,21 +351,3 @@ class LeaveOneOut():
     def get_n_folds(self):
 
         return self.n_splits
-
-
-class PredefinedKFold():
-    """A cross-validation iterator to when a dataset has been loaded with the
-    :meth:`load_from_folds <surprisica.dataset.Dataset.load_from_folds>`
-    method."""
-    def split(self, data):
-        self.n_splits = len(data.folds_files)
-        for train_file, test_file in data.folds_files:
-            raw_trainset = data.read_ratings(train_file)
-            raw_testset = data.read_ratings(test_file)
-            trainset = data.construct_trainset(raw_trainset)
-            testset = data.construct_testset(raw_testset)
-
-            yield trainset, testset
-
-    def get_n_folds(self):
-        return self.n_splits
